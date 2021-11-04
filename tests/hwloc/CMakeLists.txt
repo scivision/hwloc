@@ -16,3 +16,14 @@ endforeach()
 target_compile_definitions(hwloc_type_sscanf PRIVATE XMLTESTDIR=\"${CMAKE_CURRENT_SOURCE_DIR}/xml/\")
 
 set_tests_properties(get_obj_with_same_locality PROPERTIES ENVIRONMENT HWLOC_TOP_SRCDIR=${TOPDIR})
+
+# --- optional tests
+
+find_package(OpenCL)
+if(OpenCL_FOUND)
+  add_executable(test_opencl opencl.c)
+  target_link_libraries(test_opencl PRIVATE hwloc::hwloc OpenCL::OpenCL)
+
+  add_test(NAME OpenCL COMMAND test_opencl)
+  set_tests_properties(OpenCL PROPERTIES TIMEOUT 10)
+endif()
