@@ -4,7 +4,7 @@ file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/../windows/hwloc_config.h version_line
 REGEX "#define HWLOC_VERSION \"([0-9]+\.[0-9]+.[0-9]+)")
 string(REGEX MATCH "([0-9]+\.[0-9]+.[0-9]+)" HWLOC_VERSION "${version_line}")
 
-project(hwloc
+project(HWLOC
     LANGUAGES C
     VERSION ${HWLOC_VERSION}
 )
@@ -15,6 +15,10 @@ option(HWLOC_SKIP_TOOLS "don't build/install other hwloc tools")
 option(HWLOC_SKIP_INCLUDES "don't install headers")
 
 set(TOPDIR ${PROJECT_SOURCE_DIR}/../..)
+
+set(CMAKE_STATIC_LIBRARY_PREFIX lib)
+set(CMAKE_SHARED_LIBRARY_PREFIX lib)
+# "libhwloc.*" naming for MSVC and non-MSVC
 
 configure_file(${TOPDIR}/contrib/windows/hwloc_config.h include/hwloc/autogen/config.h COPYONLY)
 configure_file(${TOPDIR}/contrib/windows/static-components.h include/static-components.h COPYONLY)
@@ -79,7 +83,7 @@ configure_file(${CMAKE_CURRENT_SOURCE_DIR}/private_config.h.in include/private/a
 add_compile_definitions($<$<CONFIG:DEBUG>:HWLOC_DEBUG=1>)
 
 # FIXME dll soname
-add_library(libhwloc
+add_library(hwloc
     ${TOPDIR}/hwloc/topology.c
     ${TOPDIR}/hwloc/traversal.c
     ${TOPDIR}/hwloc/distances.c
@@ -102,10 +106,18 @@ add_library(libhwloc
 )
 
 if(BUILD_SHARED_LIBS)
-    target_compile_definitions(libhwloc PRIVATE $<$<BOOL:${MSVC}>:_USRDLL>)
+    target_compile_definitions(hwloc PRIVATE $<$<BOOL:${MSVC}>:_USRDLL>)
 endif()
 
-target_include_directories(libhwloc PRIVATE ${TOPDIR}/include ${TOPDIR}/hwloc ${CMAKE_CURRENT_BINARY_DIR}/include)
+target_include_directories(hwloc PUBLIC
+    "$<BUILD_INTERFACE:${TOPDIR}/include;${CMAKE_CURRENT_BINARY_DIR}/include>"
+    $<INSTALL_INTERFACE:include>
+)
+
+# construct hwloc object, for ease of internal/external consumption of hwloc
+
+add_library(hwloc::hwloc INTERFACE IMPORTED)
+target_link_libraries(hwloc::hwloc INTERFACE hwloc)
 
 # Tools under utils/hwloc
 
@@ -124,8 +136,7 @@ if(NOT HWLOC_SKIP_TOOLS)
     foreach(tool IN ITEMS ${TOOLS})
         add_executable(${tool}
             ${TOPDIR}/utils/hwloc/${tool}.c)
-        target_include_directories(${tool} PRIVATE ${TOPDIR}/include ${CMAKE_CURRENT_BINARY_DIR}/include)
-        target_link_libraries(${tool} PRIVATE libhwloc)
+        target_link_libraries(${tool} PRIVATE hwloc::hwloc)
     endforeach(tool)
 
 endif()
@@ -155,7 +166,7 @@ if(NOT HWLOC_SKIP_LSTOPO)
     add_executable(lstopo-no-graphics
         ${LSTOPO_COMMON_SOURCES}
     )
-    target_link_libraries(lstopo-no-graphics PRIVATE libhwloc)
+    target_link_libraries(lstopo-no-graphics PRIVATE hwloc::hwloc)
 
     add_executable(lstopo
         ${LSTOPO_COMMON_SOURCES}
@@ -171,21 +182,21 @@ if(NOT HWLOC_SKIP_LSTOPO)
     target_link_options(lstopo-win PRIVATE "$<$<BOOL:${MSVC}>:/subsystem:windows;/entry:mainCRTStartup>")
 
     foreach(tool IN ITEMS ${LSTOPOS})
-        target_include_directories(${tool} PRIVATE ${TOPDIR}/include ${CMAKE_CURRENT_BINARY_DIR}/include ${TOPDIR}/utils/hwloc)
-        target_link_libraries(${tool} PRIVATE libhwloc)
+        target_include_directories(${tool} PRIVATE ${TOPDIR}/utils/hwloc)
+        target_link_libraries(${tool} PRIVATE hwloc::hwloc)
     endforeach(tool)
 
 endif()
 
 # Misc
 
-foreach(target IN ITEMS libhwloc ${TOOLS} ${LSTOPOS})
+foreach(target IN ITEMS hwloc ${TOOLS} ${LSTOPOS})
     target_compile_definitions(${target} PRIVATE $<$<BOOL:${MSVC}>:_CRT_SECURE_NO_WARNINGS>)
 endforeach(target)
 
 # Install
 
-install(TARGETS libhwloc)
+install(TARGETS hwloc)
 
 if(NOT HWLOC_SKIP_TOOLS)
     install(TARGETS ${TOOLS})
