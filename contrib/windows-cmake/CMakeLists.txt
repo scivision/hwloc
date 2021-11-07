@@ -61,6 +61,11 @@ check_c_source_compiles("int main(void) {int cpuinfo[4]; __cpuidex(cpuinfo,0,0);
 HWLOC_HAVE_MSVC_CPUIDEX
 )
 
+find_package(LibXml2)
+set(HWLOC_HAVE_LIBXML2)
+if(LibXml2_FOUND)
+    set(HWLOC_HAVE_LIBXML2 1)
+endif()
 # the following lines are disabled until we are sure they are safe with old build environmentx
 # - snprintf() returned broken values in the past, hwloc detects it during configure (see 7a4ee26510c06b55fc04aaccbfa18d0ca3b87198)
 #   set(HAVE_DECL_SNPRINTF 1)
