@@ -1,7 +1,13 @@
-cmake_minimum_required(VERSION 3.15)
+cmake_minimum_required(VERSION 3.15...3.22)
+
+file(STRINGS ${CMAKE_CURRENT_SOURCE_DIR}/../windows/hwloc_config.h version_line
+REGEX "#define HWLOC_VERSION \"([0-9]+\.[0-9]+.[0-9]+)")
+string(REGEX MATCH "([0-9]+\.[0-9]+.[0-9]+)" HWLOC_VERSION "${version_line}")
+
 project(hwloc
     LANGUAGES C
-    VERSION 2.7.0)
+    VERSION ${HWLOC_VERSION}
+)
 
 # Available configuration options
 # HWLOC_SKIP_LSTOPO doesn't build/install lstopo
